@@ -1,14 +1,7 @@
-*.class
-
-# Package Files #
-*.jar
-*.war
-*.ear
-/target/
-
-#eclipse file
-/.settings/
-.project
-.classpath
-
-
+.DS_Store
+Thumbs.db
+db.json
+*.log
+node_modules/
+public/
+.deploy*/
