@@ -1,4 +1,4 @@
-JavaBlog
+Karl's blog
 ========
 
-Java Blog
+You never try, you never know.
