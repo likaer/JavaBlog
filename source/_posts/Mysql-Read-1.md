@@ -1,5 +1,5 @@
 ---
-title: 高性能Mysql读后感-事务
+title: 高性能Mysql读后感-1
 date: 2019-01-07 20:31:53
 tags: Mysql
 ---
@@ -30,3 +30,13 @@ tags: Mysql
 
 点评：由于是最高锁粒度，会导致大量的超时和锁竞争问题，不适合并发性场景
 
+
+### Mysql的数据库引擎
+
+## 1. InnoDB
+
+- TODO
+
+## 2. MyISAM
+
+## 3. 其他
