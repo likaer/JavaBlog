@@ -29,7 +29,7 @@ tags: Mysql
 指事务中的所有操作要么全部执行，要么全部不执行
 
 - Mysql默认COMMIT和ROLLBACK的方式保证事务的一致性
-- Mysql
+- Mysql通过SQL语法支持事务的提交和回滚
 ```
 START TRANSACTION
     [transaction_characteristic [, transaction_characteristic] ...]
@@ -49,13 +49,36 @@ SET autocommit = {0 | 1}
 ## Consistency(一致性)
 事务中的数据总是从一个一致的状态到另一个一致的状态
 
+- [InnoDB doublewrite buffer(双写缓冲区)](https://www.cnblogs.com/geaozhang/p/7241744.html)
+- InnoDB crash recovery(数据恢复)
+
 ## Isolation(隔离性)
 隔离性是对事务并发过程中数据之间互相影响的程度的定义
+
+- Mysql事务隔离级别机制
 
 ## Durability(持久性)
 指事务提交后，数据会持久化在数据库，且不会由于系统崩溃导致数据丢失。
 
+- InnoDB doublewrite buffer, turned on and off by the innodb_doublewrite configuration option.
 
+- Configuration option innodb_flush_log_at_trx_commit.
+
+- Configuration option sync_binlog.
+
+- Configuration option innodb_file_per_table.
+
+- Write buffer in a storage device, such as a disk drive, SSD, or RAID array.
+
+- Battery-backed cache in a storage device.
+
+- The operating system used to run MySQL, in particular its support for the fsync() system call.
+
+- Uninterruptible power supply (UPS) protecting the electrical power to all computer servers and storage devices that run MySQL servers and store MySQL data.
+
+- Your backup strategy, such as frequency and types of backups, and backup retention periods.
+
+- For distributed or hosted data applications, the particular characteristics of the data centers where the hardware for the MySQL servers is located, and network connections between the data centers.
 
 ### Mysql事务隔离级别
 
