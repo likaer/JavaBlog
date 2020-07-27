@@ -7,6 +7,24 @@ tags: Mysql
 
 ### Mysql的数据库引擎
 
+| Feature | InnoDB | MyISAM |
+| ------- | ------ | ------ |
+| B-Tree索引 | Yes | Yes |
+| 备份恢复 | Yes | Yes |
+| <font color='red'>聚簇索引</font> | Yes | No |
+| 压缩数据 | Yes | Yes |
+| <font color='red'>数据缓存</font> | Yes | No |
+| 数据加密 | Yes | Yes |
+| <font color='red'>外键</font> | Yes | No |
+| 全文索引 | Yes | Yes |
+| 索引缓存 | Yes | Yes |
+| <font color='red'>锁粒度</font> | Row | Table |
+| <font color='red'>MVCC(多版本并发控制)</font> | Yes | No |
+| 复制 | Yes | Yes |
+| <font color='red'>存储限制</font> | 64TB | 256TB |
+| T-Tree索引 | No | No |
+| <font color='red'>**事务**</font> | <font color='red'>Yes</font> | <font color='red'>No</font> |
+
 ## InnoDB
 
 简述：在MySQL 5.7中，InnoDB是默认的MySQL存储引擎，也是目前Mysql使用的最广泛的存储引擎
