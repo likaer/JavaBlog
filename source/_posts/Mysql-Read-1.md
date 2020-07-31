@@ -116,6 +116,18 @@ SELECT ... LOCK IN SHARE MODE;
 SELECT ... FOR UPDATE;
 ```
 
+### 意向锁
+
+InnoDB存储引擎支持多粒度的锁定，这种锁定允许事务在行级上的锁和表级上的锁同时存在
+
+| | 意向共享锁 | 意向排他锁 | 共享锁 | 排他锁 |
+|---|---|---|---|---|
+| 意向共享锁 | 兼容 | 兼容 | 兼容 | 不兼容 |
+| 意向排他锁 | 兼容 | 兼容 | 不兼容 | 不兼容 |
+| 共享锁 | 兼容 | 不兼容 | 兼容 | 不兼容 |
+| 排他锁 | 不兼容 | 不兼容 | 不兼容 | 不兼容 |
+
+
 ### 锁排查
 
 在INFORMATION_SCHEMA架构下可以通过INNODB_TRX, INNODB_LOCKS, INNODB_LOCK_WAITS三张表观察当前事务并分析可能存在的锁问题
@@ -136,6 +148,28 @@ INNODB_TRX
 INNODB_LOCKS
 
 ![INNODB_LOCKS](/images/INNODB_LOCKS.png)
+
+INNODB_LOCK_WAITS
+
+| Column_Name | Description |
+| --- | --- |
+| requesting_trx_id | 申请锁资源的事务ID |
+| requested_lock_id | 申请的锁ID |
+| blocking_trx_id | 阻塞的事务ID |
+| blocking_lock_id | 阻塞的锁ID |
+
+查看哪个事务阻塞了另一个事务
+```
+select r.trx_id waiting_trx_id,
+r.trx_mysql_thread_id waiting_thread,
+r.trx_query waiting_query,
+b.trx_id blocking_trx_id,
+b.trx_mysql_thread_id blocking_thread,
+b.trx_query blocking_query
+from `information_schema`.innodb_lock_waits w inner join `information_schema`.innodb_trx b
+on b.trx_id = w.blocking_trx_id
+inner join `information_schema`.innodb_trx r on r.trx_id = w.requesting_trx_id;
+```
 
 --------------------------------
 
