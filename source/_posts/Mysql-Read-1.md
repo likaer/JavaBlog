@@ -5,7 +5,7 @@ tags: MySQL
 ---
 
 
-### MySQL数据库引擎
+## InnoDB和MyISAM差异性
 
 | Feature | InnoDB | MyISAM |
 | ------- | ------ | ------ |
@@ -29,7 +29,9 @@ tags: MySQL
 
 ## B-Tree索引
 
-B树，它是一种多路搜索树：
+### B-Tree定义
+
+B树，是一种多路搜索树：
 
 1.定义任意非叶子结点最多只有M个儿子；且M>2；
 
@@ -46,6 +48,7 @@ B树，它是一种多路搜索树：
 7.非叶子结点的指针：P[1], P[2], …, P[M]；其中P[1]指向关键字小于K[1]的子树，P[M]指向关键字大于K[M-1]的子树，其它P[i]指向关键字属于(K[i-1], K[i])的子树；
 
 8.所有叶子结点位于同一层；
+
 
 如下图所示为一个3阶的B-Tree： 
 ![B-Tree](/images/B-Tree.png)
@@ -64,7 +67,7 @@ B树，它是一种多路搜索树：
 
 ### 总结
 
-- 在二叉树的基础上尽量降低树的高度，对每个节点内的数据进行二分查询，保证性能与二叉树完全一致的同时降低磁盘IO的操作
+- 在二叉树的基础上尽量降低树的高度，对每个节点内的数据进行二分查询，保证性能与二叉树完全一致的同时<font color='red'>降低磁盘IO的操作</font>
 
 <font color='red'>注：MySQL的InnoDB实际上使用的是B+Tree数据结构，即在每个叶子节点上包含下一个叶子节点的指针</font>
 
@@ -78,8 +81,63 @@ B树，它是一种多路搜索树：
 
 - 在定义主键的情况下，InnoDB会选择主键作为聚簇索引
 - 如果没有这样的索引，InnoDB会隐式定义一个主键作为聚簇索引
-- 
-- 
+
+
+## 锁机制
+
+
+### 读写锁
+
+- MyISAM的锁采用表锁机制，并发情况下的读没有问题，但是并发插入性能会差一些
+- InnoDB采用与Oracle类似的锁机制，提供一致性的非锁定读、 行级锁支持
+
+InnoDB锁机制：
+InnoDB存储引擎实现了两种标准的行级锁：
+- 共享锁：又叫读锁，指当前事务对该行数据加读锁，且阻塞其他事务写该数据
+- 排他锁：又叫写锁，指当前事务对该行数据加写锁，且阻塞其他事务读写该行数据
+
+共享锁与排他锁的兼容性如下：
+
+| | 共享锁 | 排他锁 |
+| ------- | ------ | ------ |
+| 共享锁 | 兼容 | 不兼容 |
+| 排他锁 | 不兼容 | 不兼容 |
+
+从表中可以看出来，除了共享锁和共享锁兼容，其他锁之间都不兼容
+
+MySQL显性的加锁方法
+
+共享锁
+```
+SELECT ... LOCK IN SHARE MODE;
+```
+排他锁
+```
+SELECT ... FOR UPDATE;
+```
+
+### 锁排查
+
+在INFORMATION_SCHEMA架构下可以通过INNODB_TRX, INNODB_LOCKS, INNODB_LOCK_WAITS三张表观察当前事务并分析可能存在的锁问题
+
+INNODB_TRX
+
+| Column_Name | Description |
+| --- | --- |
+| trx_id | 唯一的事务ID号 |
+| trx_state | 事务执行的状态, 允许的值为 RUNNING, LOCK WAIT, ROLLING BACK, COMMITTING. |
+| trx_started | 事务开始时间 |
+| trx_requested_lock_id | 等待事务的锁ID。如果trx_state是lock wait,那么该值代表当前事务等待之前事务占用锁资源的ID，关联INNODB_LOCKS;否则为Null; |
+| trx_weight | 一个事务的权重,反映(不准确)改变的记录数和被事务锁定的记录数。发生死锁时, InnoDB 会选择权重最小的事务回滚. |
+| trx_mysql_thread_id | MySQL中的线程ID，SHOW PROCESSLIST显示的结果 |
+| trx_query | 事务执行的语句 |
+| 其他 | https://dev.mysql.com/doc/refman/8.0/en/information-schema-innodb-trx-table.html |
+
+INNODB_LOCKS
+
+![INNODB_LOCKS](/images/INNODB_LOCKS.png)
+
+--------------------------------
 
 ## InnoDB
 
