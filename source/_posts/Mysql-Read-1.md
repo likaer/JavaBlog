@@ -127,6 +127,46 @@ InnoDB存储引擎支持多粒度的锁定，这种锁定允许事务在行级�
 | 共享锁 | 兼容 | 不兼容 | 兼容 | 不兼容 |
 | 排他锁 | 不兼容 | 不兼容 | 不兼容 | 不兼容 |
 
+### 锁算法
+
+InnoDB如果没法命中索引，会采用表锁，如果命中索引，则会存在3种行锁算法，其分别是
+- Record Lock: 单个行记录的锁
+- Gap Lock: 间隙锁，锁定一个范围，但不包含记录本身
+- Next-Key Lock: 前两个锁的结合，锁定一个范围+记录本身
+
+
+例如对如下SQL来说
+
+| ID(primary key) | columnA(key) |
+| --- | --- |
+| 1 | 1 |
+| 2 | 1 |
+| 3 | 3 |
+| 4 | 7 |
+| 5 | 13 |
+
+```
+select * from tableA where columnA = 3 for update;
+```
+如果columnA是聚簇索引或者唯一索引，则InnoDB会采用Record Lock锁定单行。
+如果columnA是普通索引，则InnoDB会采用Next-Key Lock锁定区间范围。
+假定columnA是普通索引且索引的区间范围分为以下
+(-无穷, 1)
+[1, 3)
+[3, 7)
+[7, 13)
+[13, +无穷]
+
+Next-Lock会锁定3(记录本身)+2个索引区间范围【(1, 3), (3, 7)】，同时由于tableA存在一个聚簇索引，需要同时对聚簇索引加一个Record Lock
+
+Gap Lock则是在无法确定记录的情况下去锁定一个范围值
+
+因此，对于以上的操作, 以下的操作都会被堵塞
+```
+select * from tableA where id = 3 lock in share mode;
+insert into tableA select 6, 2;
+insert into tableA select 7, 6;
+```
 
 ### 锁排查
 
@@ -175,7 +215,7 @@ inner join `information_schema`.innodb_trx r on r.trx_id = w.requesting_trx_id;
 
 ## InnoDB
 
-简述：在MySQL 5.7中，InnoDB是默认的MySQL存储引擎，也是目前Mysql使用的最广泛的存储引擎
+简述：在MySQL 5.7中，InnoDB是默认的MySQL存储引擎，也是目前MySQL使用的最广泛的存储引擎
 
 - 它的DML(Data Manipulation Language)操作遵循ACID模型，具有提交，回滚和崩溃恢复功能的事务来保护用户数据。
 
@@ -187,15 +227,15 @@ inner join `information_schema`.innodb_trx r on r.trx_id = w.requesting_trx_id;
 
 - 支持数据备份/恢复，数据压缩，数据缓存，数据加密等
 
-### Mysql的事务
+### MySQL的事务
 
-简述：Mysql事务遵循ACID模型
+简述：MySQL事务遵循ACID模型
 
 ## Atomicity(原子性)
 指事务中的所有操作要么全部执行，要么全部不执行
 
-- Mysql默认COMMIT和ROLLBACK的方式保证事务的一致性
-- Mysql通过SQL语法支持事务的提交和回滚
+- MySQL默认COMMIT和ROLLBACK的方式保证事务的一致性
+- MySQL通过SQL语法支持事务的提交和回滚
 ```
 START TRANSACTION
     [transaction_characteristic [, transaction_characteristic] ...]
@@ -221,7 +261,7 @@ SET autocommit = {0 | 1}
 ## Isolation(隔离性)
 隔离性是对事务并发过程中数据之间互相影响的程度的定义
 
-- Mysql事务隔离级别机制
+- MySQL事务隔离级别机制
 
 ## Durability(持久性)
 指事务提交后，数据会持久化在数据库，且不会由于系统崩溃导致数据丢失。
@@ -246,7 +286,7 @@ SET autocommit = {0 | 1}
 
 - For distributed or hosted data applications, the particular characteristics of the data centers where the hardware for the MySQL servers is located, and network connections between the data centers.
 
-### Mysql事务隔离级别
+### MySQL事务隔离级别
 
 ## 1. 脏读（READ UNCOMMITED, 未提交读）
 
@@ -260,11 +300,13 @@ SET autocommit = {0 | 1}
 
 点评：在事务A多次读取同一数据时，若事务B执行了`更新操作`，可能会得到不同的结果。
 
-## 3. 可重复读（REPEATABLE READ， 幻读）：Mysql的默认事务隔离级别
+## 3. 可重复读（REPEATABLE READ， 幻读）：MySQL的默认事务隔离级别
 
 指事务执行时，多次读取同一数据，得到的结果总是一样，但存在幻读。
 
 点评：幻读是指在事务A执行多次查询时，事务B执行了`插入操作`， 此时事务A多次查询后会发现突然多了一条数据。
+
+注：在RR级别下,幻读可以通过***select ... for update***避免
 
 ## 4. 可串行化（SERIALIZEABLE）
 
@@ -272,3 +314,7 @@ SET autocommit = {0 | 1}
 
 点评：由于是最高锁粒度，会导致大量的超时和锁竞争问题，不适合并发性场景
 
+
+------
+
+RR 通过对 select 操作手动加 行X锁（SELECT ... FOR UPDATE 这也正是 SERIALIZABLE 隔离级别下会隐式为你做的事情）可以避免幻读，同时还需要知道，即便当前记录不存在，比如 id = 1 是不存在的，当前事务也会获得一把记录锁（因为InnoDB的行锁锁定的是索引，故记录实体存在与否没关系，存在就加 行X锁，不存在就加 next-key lock间隙X锁），其他事务则无法插入此索引的记录，故杜绝了幻读。
