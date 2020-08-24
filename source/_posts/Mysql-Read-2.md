@@ -68,3 +68,42 @@ tags: Mysql
 - TIMESTAMP只能保存1970年11月1号到2038年的日期, 时区相关, 默认NOT NULL
 - TIMESTAMP使用4个字节存储，DATETIME使用8个字节存储
 - 如果要存储微秒级别的时间戳，建议使用BIGINT类型存储
+
+# 高性能索引策略
+
+## 1. 使用独立的列来进行比较
+
+所谓独立的列，是指索引列不能是表达式的一部分，也不能是函数的参数，否则MySQL就不会使用索引
+
+```
+##不能命中columnA索引
+select * from tableA where cloumnA + 1 < 100;
+##可以命中columnA索引
+select * from tableA where cloumnA < 100 - 1;
+
+##不能命中columnB索引
+select * from tableA where FROM_UNIXTIME(columnB) = '2016-04-20 20:00:00';
+##可以命中columnB索引
+select * from tableA where columnB = unix_timestamp('2016-04-20 20:00:00');
+```
+
+## 2. 使用索引扫描来做排序
+
+只有当索引的列顺序和ORDER BY的顺序完全一致，并且所有列的排序方向都一样，MySQL才能够使用索引来对结果进行排序
+
+
+## 3. 冗余和重复索引
+
+1. 如果已经创建了(columnA,columnB)索引，再创建columnA索引就是冗余索引，因为前者完全可以当后者使用
+2. 已有A索引的情况下，应该将索引扩展到(A,B)而不是建新的索引
+3. 过多的索引会导致插入速度的下降
+4. 有的索引从来没有使用过
+
+<font color="red">注：查询INFORMATION_SCHEMA库索引使用频率或使用Percona Toolkit工具可以查询这一类的索引</font>
+
+## 4. 多列索引
+
+- 将选择性最高的列放到索引的最前列
+- 寻找searchable arguments来使用区分度更加明显的列
+- 保证查询性能的情况下，尽量少的建立索引
+
